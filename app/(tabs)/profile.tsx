@@ -1,32 +1,31 @@
-import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  SafeAreaView, 
-  Image, 
-  TouchableOpacity, 
-  ScrollView 
+import React, { useMemo, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  SafeAreaView,
+  Image,
+  TouchableOpacity,
+  ScrollView
 } from 'react-native';
-import { Settings, ShoppingBag, Heart, LogOut } from 'lucide-react-native';
+import { Settings, Heart, LogOut } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Typography from '@/components/ui/Typography';
 import Button from '@/components/ui/Button';
 import GlassmorphicCard from '@/components/ui/GlassmorphicCard';
 import Colors from '@/constants/Colors';
 import { products } from '@/data/products';
+import { useAuthContext } from '@/context/AuthContext';
+import { useRouter } from 'expo-router';
 
-// Mock user data
-const user = {
-  name: 'Sophia Martinez',
-  email: 'sophia@example.com',
-  avatar: 'https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg',
-  memberSince: 'January 2023',
-  preferences: ['Dresses', 'Shoes', 'Accessories'],
-};
+const DEFAULT_AVATAR =
+  'https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg';
+const DEFAULT_PREFERENCES = ['Vestidos', 'Calzado', 'Accesorios'];
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const { user, logout, authLoading } = useAuthContext();
   const [wishlistItems] = useState(products.filter(p => p.inWishlist));
-  
+
   const handleEditProfile = () => {
     // Edit profile functionality (would implement in a full app)
     console.log('Edit profile pressed');
@@ -37,10 +36,31 @@ export default function ProfileScreen() {
     console.log('Settings pressed');
   };
   
-  const handleLogout = () => {
-    // Logout functionality (would implement in a full app)
-    console.log('Logout pressed');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.warn('No se pudo cerrar sesión', error);
+    }
   };
+
+  const memberSinceLabel = useMemo(() => {
+    if (!user?.createdAt) {
+      return 'Miembro';
+    }
+
+    try {
+      const date = new Date(user.createdAt);
+      return `Miembro desde ${date.toLocaleDateString('es-ES', {
+        month: 'long',
+        year: 'numeric',
+      })}`;
+    } catch (error) {
+      console.warn('Error al formatear la fecha de registro', error);
+      return 'Miembro';
+    }
+  }, [user?.createdAt]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,11 +73,8 @@ export default function ProfileScreen() {
           
           <View style={styles.profileInfo}>
             <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: user.avatar }}
-                style={styles.avatar}
-              />
-              <TouchableOpacity 
+              <Image source={{ uri: DEFAULT_AVATAR }} style={styles.avatar} />
+              <TouchableOpacity
                 style={styles.editAvatarButton}
                 onPress={handleEditProfile}
               >
@@ -70,13 +87,17 @@ export default function ProfileScreen() {
             </View>
             
             <Typography variant="h2" style={styles.userName}>
-              {user.name}
+              {user?.name ?? 'Invitado'}
             </Typography>
             <Typography variant="body2" color={Colors.dark.secondaryText}>
-              {user.email}
+              {user?.email ?? 'Sin correo registrado'}
             </Typography>
-            <Typography variant="caption" color={Colors.gold.primary} style={styles.memberSince}>
-              Member since {user.memberSince}
+            <Typography
+              variant="caption"
+              color={Colors.gold.primary}
+              style={styles.memberSince}
+            >
+              {memberSinceLabel}
             </Typography>
           </View>
         </View>
@@ -142,7 +163,7 @@ export default function ProfileScreen() {
           </Typography>
           
           <View style={styles.preferencesContainer}>
-            {user.preferences.map((preference, index) => (
+            {DEFAULT_PREFERENCES.map((preference, index) => (
               <View key={index} style={styles.preferenceTag}>
                 <Typography variant="caption" color={Colors.dark.background}>
                   {preference}
@@ -151,8 +172,12 @@ export default function ProfileScreen() {
             ))}
           </View>
         </View>
-        
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={authLoading}
+        >
           <LogOut size={20} color={Colors.dark.secondaryText} style={styles.logoutIcon} />
           <Typography variant="button" color={Colors.dark.secondaryText}>
             Log Out

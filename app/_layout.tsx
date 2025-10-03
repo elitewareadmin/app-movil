@@ -13,9 +13,39 @@ import {
   Montserrat_600SemiBold
 } from '@expo-google-fonts/montserrat';
 import { SplashScreen } from 'expo-router';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import Colors from '@/constants/Colors';
+import { Typography } from '@/components/ui/Typography';
+import { AuthProvider, useAuthContext } from '@/context/AuthContext';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+function RootNavigator() {
+  const { isHydrating, user } = useAuthContext();
+
+  if (isHydrating) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={Colors.gold.primary} />
+        <Typography variant="body2" color={Colors.dark.secondaryText}>
+          Preparando tu experiencia...
+        </Typography>
+      </View>
+    );
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {user ? (
+        <Stack.Screen name="(tabs)" />
+      ) : (
+        <Stack.Screen name="(auth)" />
+      )}
+      <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -41,12 +71,19 @@ export default function RootLayout() {
   }
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" options={{ title: 'Not Found' }} />
-      </Stack>
+    <AuthProvider>
+      <RootNavigator />
       <StatusBar style="light" />
-    </>
+    </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loaderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.dark.background,
+    gap: 16,
+  },
+});
